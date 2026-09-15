@@ -215,7 +215,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 <div class="wrap" id="app" hidden>
   <div class="top">
     <div class="mono" id="topdate">Tue 15 Sep · 12:00 PT</div>
-    <div class="mono" id="clock"></div>
+    <div style="display:flex;gap:14px;align-items:center"><button class="mono" id="cpctx" style="color:var(--sky)">Copy context</button><div class="mono" id="clock"></div></div>
   </div>
   <div class="tabs" id="tabs">
     <button data-t="brief" class="on"><svg viewBox="0 0 24 24"><path d="M6 4h9l4 4v12H6z"/><path d="M14 4v5h5M9 13h7M9 17h5"/></svg><span>Brief</span></button>
@@ -329,6 +329,32 @@ function boot(){
   render(); setInterval(()=>{ const c=$('#clock'); if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Los_Angeles'}) + ' PT'; const cd=$('#cd'); if(cd) cd.textContent = fmtCountdown(); }, 1000);
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; tab = b.dataset.t; [...$('#tabs').children].forEach(x=>x.classList.toggle('on', x===b)); render(); window.scrollTo(0,0); });
+
+/* ---------- copy context ---------- */
+function ctxText(short){
+  const C=B.content||{}, D=B.day||{}, strip=x=>String(x||'').replace(/<[^>]+>/g,'');
+  const L=[]; const H=(t)=>L.push('\n## '+t);
+  L.push('# Context: AI-native platforms for industries software forgot, Real World Data & Robotics Luncheon');
+  L.push('Tuesday 15 September 2026, 12:00 to 13:00 PT, Google Bay View, Gemini Room (Forum), level 2, Mountain View. Hosts Lisa Dolan and John Werner. Inside the Imagination in Action Silicon Valley AI Summit (Sep 14-15, with Stanford HAI). 68 guests. Invite: https://luma.com/q60llc5w');
+  L.push('I am George Trusevskij, founder of TRU Synth (trusynth.com). Ask me to prep, roleplay, or answer as me using the material below.');
+  H('The day'); L.push(D.plan||''); (D.timeline||[]).forEach(i=>L.push(`- ${i.t} ${i.h}. ${strip(i.s)}`)); (D.cells||[]).forEach(c=>L.push(`- ${c.k}: ${c.v}`)); (D.evening||[]).forEach(i=>L.push(`- ${i.t} ${i.h}. ${strip(i.s)}`));
+  H('Hosts'); (B.hosts||[]).forEach(x=>{ L.push(`### ${x.name}\n${x.role}`); (x.lines||[]).forEach(l=>L.push('- '+l)); L.push('Things I can say:'); (x.say||[]).forEach(l=>L.push('- "'+l+'"')); });
+  H('Guests'); (B.people||[]).slice().sort((a,b)=>(a.tier||'C').localeCompare(b.tier||'C')||a.name.localeCompare(b.name)).forEach(p=>{ if(short && p.tier==='C') return; L.push(`- [${p.tier}] ${p.name}${p.title||p.company?' · '+[p.title,p.company].filter(Boolean).join(', '):''}${p.speaker?' (summit speaker)':''}${p.what?'. '+p.what:''}${p.why?' Why: '+p.why:''}${p.opener?' Opener: "'+p.opener+'"':''}`); });
+  H('My pitch'); L.push('One line: '+(C.intro?.one_line||'')); L.push('Forty seconds: '+(C.intro?.forty||'')); L.push('Fifteen seconds: '+(C.intro?.fifteen||''));
+  H("Lisa's three questions"); (C.three||[]).forEach(t=>L.push(`Q: ${t.q}\nA: ${t.a}${t.remember?' (hook: '+t.remember+')':''}`));
+  H('Facts'); (C.facts||[]).forEach(f=>L.push(`- ${f.k}: ${f.v}`));
+  H('Rules for the room'); (C.rules||[]).forEach(r=>L.push('- '+r));
+  H('Questions I ask them'); (C.ask||[]).forEach(r=>L.push('- '+r));
+  if(!short){ H('Drill: questions, answers, traps'); (C.drill||[]).forEach(d=>L.push(`[${d.cat}] Q: ${d.q}\nA: ${d.a}${d.trap?'\nDo not: '+d.trap:''}`)); H('Objections'); (C.objections||[]).forEach(o=>L.push(`Objection: ${o.o}\nReply: ${o.r}`)); H('Story beats'); (C.story||[]).forEach(b=>L.push(`${b.n}. ${b.title}: ${b.line}`)); H('Follow-up email'); L.push(C.followup?.email||''); H('Research: hosts, summit, thesis'); L.push(B.hosts_md||''); H('Route notes'); L.push(B.route_md||''); H('Summit programme, Sep 15'); L.push((B.summit_raw||'').slice(0,20000)); }
+  return L.join('\n');
+}
+async function copyCtx(short){
+  const t=ctxText(short); const b=$('#cpctx');
+  try{ await navigator.clipboard.writeText(t); b.textContent='Copied '+Math.round(t.length/1000)+'k'; setTimeout(()=>b.textContent='Copy context',2500); }
+  catch{ const ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;inset:10% 5%;width:90%;height:80%;z-index:99;background:#111;color:#fff;border:1px solid #333;border-radius:14px;padding:12px;font-size:12px'; document.body.append(ta); ta.focus(); ta.select(); const x=document.createElement('button'); x.textContent='Close'; x.className='btn w'; x.style.cssText='position:fixed;bottom:6%;left:50%;transform:translateX(-50%);z-index:100'; x.onclick=()=>{ta.remove();x.remove();}; document.body.append(x); }
+}
+$('#cpctx').onclick = (e) => copyCtx(false);
+
 function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill})[tab](); }
 const A = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--sky);text-decoration:none">${esc(t)}</a>` : esc(t);
 
@@ -338,6 +364,9 @@ function brief(){
   V.append(h(`<div class="hero dusk"><div class="mono">Page 1 · Plan</div><div class="big">12<small>00</small></div><div class="sub">${esc(B.day?.place||'')}</div><div class="foot"><div><div class="mono">Starts in</div><div style="font-family:var(--disp);font-weight:300;font-size:24px;letter-spacing:-.02em" id="cd">${fmtCountdown()}</div></div><div style="text-align:right"><div class="mono">Leave by</div><div style="font-family:var(--disp);font-weight:300;font-size:24px;letter-spacing:-.02em">${esc(B.day?.leave||'09:15')}</div></div></div></div>`));
   V.append(h(`<div class="chips"><button class="chip on" data-j="p1">Plan</button><button class="chip" data-j="p2">Prep</button><button class="chip" data-j="p3">People</button></div>`));
   V.querySelector('.chips').addEventListener('click', e => { const b=e.target.closest('.chip'); if(!b) return; const el=document.getElementById(b.dataset.j); if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 12, behavior:'smooth'}); });
+  V.append(h(`<div class="card"><div class="mono">Take this package elsewhere</div><div style="font-size:13px;color:var(--mute);margin-top:6px">Copies everything on this page as plain text, ready to paste into ChatGPT, Claude or any assistant.</div><div class="btns"><button class="btn w" id="cpfull">Copy full context</button><button class="btn" id="cpshort">Copy short</button></div></div>`));
+  $('#cpfull').onclick=async e=>{ const t=ctxText(false); try{ await navigator.clipboard.writeText(t); e.target.textContent='Copied '+Math.round(t.length/1000)+'k chars'; }catch{ copyCtx(false); } };
+  $('#cpshort').onclick=async e=>{ const t=ctxText(true); try{ await navigator.clipboard.writeText(t); e.target.textContent='Copied '+Math.round(t.length/1000)+'k chars'; }catch{ copyCtx(true); } };
   // page 1
   const p1 = h(`<div id="p1"></div>`).firstElementChild; V.append(p1);
   if(Bf.beats){ const tl=document.createElement('div'); tl.className='card tl'; Bf.beats.forEach(b=>tl.append(h(`<div class="it"><div class="t">${esc(b.t)}</div><div class="h">${A(b.u,b.h)}</div></div>`))); p1.append(h(`<div class="sec"><div class="mono">The day in nine lines</div><div class="mono">tap to open</div></div>`)); p1.append(tl); }
