@@ -136,6 +136,55 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .md code{font-family:var(--mono);font-size:12px;background:var(--card2);padding:1px 5px;border-radius:5px}
 .md .tw{overflow-x:auto}
 .more{margin-top:10px;font-size:13px;color:var(--sky)}
+
+/* learn */
+.learn .beat{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+.learn .beat:first-of-type{border-top:0}
+.learn .beat .t{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--peach);padding-top:3px;min-width:44px}
+.learn .beat .hook{font-size:15px;color:#fff}
+.learn .beat .full{grid-column:2;font-size:14px;color:rgba(255,255,255,.8);line-height:1.45}
+.learn .beat .av{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#1a1a20;border:1px solid var(--line2)}
+.learn .beat .op{margin-top:6px;padding:8px 10px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-size:13px;color:var(--peach)}
+.learn .beat .trap{margin-top:6px;font-size:12.5px;color:var(--rose)}
+.learn.test .beat .full{display:none}
+.learn.test .beat{cursor:pointer}
+.learn.test .beat.show .full{display:block}
+.learn.test .beat:not(.show) .hook::after{content:" ·· tap";font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--dim)}
+.main{display:block}
+#rail{display:none}
+/* desktop */
+@media (min-width: 980px){
+  .wrap{max-width:1240px;padding:calc(var(--sat) + 22px) 32px 80px;display:grid;grid-template-columns:200px 1fr;column-gap:36px}
+  .top{grid-column:1 / -1}
+  .tabs{flex-direction:column;align-items:stretch;gap:2px;position:sticky;top:20px;align-self:start;margin:0}
+  .tabs button{flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 14px;border-radius:14px}
+  .tabs button span{font-size:11px}
+  .tabs button.on{background:var(--card);border:1px solid var(--line)}
+  .tabs button.on::after{display:none}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) 320px;column-gap:28px;align-items:start}
+  #rail{display:block;position:sticky;top:20px}
+  #rail .card{margin-top:12px}
+  #rail .card:first-child{margin-top:0}
+  .hero{min-height:260px}
+  .hero .big{font-size:88px}
+  .kv{grid-template-columns:repeat(3,1fr)}
+  .story .sl{flex:0 0 46%}
+  .story{margin:12px 0 0;padding:0 0 8px}
+  .learn .beat{grid-template-columns:120px 1fr 1.4fr}
+  .learn .beat .full{grid-column:3}
+  .learn .beat.qa{grid-template-columns:90px 1fr 1.6fr}
+  .learn .names{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+  .learn .names .beat{grid-template-columns:32px 1fr;border-top:1px solid var(--line)}
+  .learn .names .beat .full{grid-column:2}
+  .pill{bottom:28px}
+  #voice{padding:32px 0}
+  #voice > *{width:min(640px,92vw);margin-left:auto;margin-right:auto}
+  #voice .vcards{margin:14px auto 0;padding:0}
+  .flash{min-height:360px}
+  .person{grid-template-columns:52px 1fr}
+  .md .tw{max-width:100%}
+}
+
 /* pill */
 .pill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 18px);width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:30}
 .pill svg{width:22px;height:22px;stroke:#000;stroke-width:2;stroke-linecap:round;fill:none}
@@ -223,8 +272,9 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
     <button data-t="room"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c0-3.2 2.6-5.2 5.5-5.2s5.5 2 5.5 5.2"/><circle cx="17" cy="10" r="2.4"/><path d="M15.5 14.6c2.7 0 5 1.7 5 4.4"/></svg><span>Room</span></button>
     <button data-t="pitch"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></svg><span>Pitch</span></button>
     <button data-t="drill"><svg viewBox="0 0 24 24"><path d="M5 19V9M10 19V5M15 19v-8M20 19v-4"/></svg><span>Drill</span></button>
+    <button data-t="learn"><svg viewBox="0 0 24 24"><path d="M4 6.5C6 5.5 8.5 5.5 12 7c3.5-1.5 6-1.5 8-.5v11c-2-1-4.5-1-8 .5-3.5-1.5-6-1.5-8-.5z"/><path d="M12 7v11"/></svg><span>Learn</span></button>
   </div>
-  <div id="view"></div>
+  <div class="main"><div id="view"></div><aside id="rail"></aside></div>
 </div>
 
 <button class="pill" id="pill" hidden aria-label="Talk to Ada"><svg viewBox="0 0 24 24"><path d="M6 10v4M10 7v10M14 9v6M18 11v2"/></svg></button>
@@ -326,7 +376,7 @@ let tab = 'brief';
 function boot(){
   $('#gate').style.display='none'; $('#app').hidden=false; $('#pill').hidden=false;
   try{ if(B.openai_key && !localStorage.getItem('oak')) localStorage.setItem('oak', B.openai_key); }catch{}
-  render(); setInterval(()=>{ const c=$('#clock'); if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Los_Angeles'}) + ' PT'; const cd=$('#cd'); if(cd) cd.textContent = fmtCountdown(); }, 1000);
+  render(); setInterval(()=>{ const c=$('#clock'); if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Los_Angeles'}) + ' PT'; const cd=$('#cd'); if(cd) cd.textContent = fmtCountdown(); const cd2=$('#cd2'); if(cd2) cd2.textContent = fmtCountdown(); }, 1000);
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; tab = b.dataset.t; [...$('#tabs').children].forEach(x=>x.classList.toggle('on', x===b)); render(); window.scrollTo(0,0); });
 
@@ -340,6 +390,8 @@ function ctxText(short){
   H('The day'); L.push(D.plan||''); (D.timeline||[]).forEach(i=>L.push(`- ${i.t} ${i.h}. ${strip(i.s)}`)); (D.cells||[]).forEach(c=>L.push(`- ${c.k}: ${c.v}`)); (D.evening||[]).forEach(i=>L.push(`- ${i.t} ${i.h}. ${strip(i.s)}`));
   H('Hosts'); (B.hosts||[]).forEach(x=>{ L.push(`### ${x.name}\n${x.role}`); (x.lines||[]).forEach(l=>L.push('- '+l)); L.push('Things I can say:'); (x.say||[]).forEach(l=>L.push('- "'+l+'"')); });
   H('Guests'); (B.people||[]).slice().sort((a,b)=>(a.tier||'C').localeCompare(b.tier||'C')||a.name.localeCompare(b.name)).forEach(p=>{ if(short && p.tier==='C') return; L.push(`- [${p.tier}] ${p.name}${p.title||p.company?' · '+[p.title,p.company].filter(Boolean).join(', '):''}${p.speaker?' (summit speaker)':''}${p.what?'. '+p.what:''}${p.why?' Why: '+p.why:''}${p.opener?' Opener: "'+p.opener+'"':''}`); });
+  if(B.situation){ H(B.situation.title); B.situation.lines.forEach(l=>L.push('- '+l)); }
+  if(B.story){ H(B.story.title); B.story.lines.forEach(l=>L.push('- '+l)); }
   H('My pitch'); L.push('One line: '+(C.intro?.one_line||'')); L.push('Forty seconds: '+(C.intro?.forty||'')); L.push('Fifteen seconds: '+(C.intro?.fifteen||''));
   H("Lisa's three questions"); (C.three||[]).forEach(t=>L.push(`Q: ${t.q}\nA: ${t.a}${t.remember?' (hook: '+t.remember+')':''}`));
   H('Facts'); (C.facts||[]).forEach(f=>L.push(`- ${f.k}: ${f.v}`));
@@ -355,7 +407,7 @@ async function copyCtx(short){
 }
 $('#cpctx').onclick = (e) => copyCtx(false);
 
-function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill})[tab](); }
+function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill, learn})[tab](); if(tab!=='drill') document.onkeydown=null; renderRail(); }
 const A = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--sky);text-decoration:none">${esc(t)}</a>` : esc(t);
 
 function brief(){
@@ -368,6 +420,7 @@ function brief(){
   $('#cpfull').onclick=async e=>{ const t=ctxText(false); try{ await navigator.clipboard.writeText(t); e.target.textContent='Copied '+Math.round(t.length/1000)+'k chars'; }catch{ copyCtx(false); } };
   $('#cpshort').onclick=async e=>{ const t=ctxText(true); try{ await navigator.clipboard.writeText(t); e.target.textContent='Copied '+Math.round(t.length/1000)+'k chars'; }catch{ copyCtx(true); } };
   // page 1
+  if(B.situation){ const c=document.createElement('div'); c.className='card'; c.innerHTML='<div class="mono">'+esc(B.situation.title)+'</div>'+B.situation.lines.map((l,i)=>`<p style="margin:10px 0 0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.88)"><span class="mono" style="color:var(--peach);margin-right:8px">0${i+1}</span>${esc(l)}</p>`).join(''); V.append(c); }
   const p1 = h(`<div id="p1"></div>`).firstElementChild; V.append(p1);
   if(Bf.beats){ const tl=document.createElement('div'); tl.className='card tl'; Bf.beats.forEach(b=>tl.append(h(`<div class="it"><div class="t">${esc(b.t)}</div><div class="h">${A(b.u,b.h)}</div></div>`))); p1.append(h(`<div class="sec"><div class="mono">The day in nine lines</div><div class="mono">tap to open</div></div>`)); p1.append(tl); }
   if(Bf.addresses){ p1.append(h(`<div class="sec"><div class="mono">Every address</div><div class="mono">maps</div></div>`)); const c=document.createElement('div'); c.className='card tl'; Bf.addresses.forEach(a=>c.append(h(`<div class="it"><div class="t" style="font-size:10px">${esc(a.k)}</div><div class="h">${A(a.u,a.v)}</div></div>`))); p1.append(c); }
@@ -376,6 +429,7 @@ function brief(){
   // page 2
   const p2 = h(`<div id="p2"></div>`).firstElementChild; V.append(p2);
   p2.append(h(`<div class="hero rose" style="min-height:220px;margin-top:30px"><div class="mono">Page 2 · Prep</div><p class="lead">${esc(C.intro?.one_line||'')}</p><div class="foot"><div class="mono">Say it slow. Stop after forty seconds.</div></div></div>`));
+  if(B.story){ const c=document.createElement('div'); c.className='card'; c.innerHTML='<div class="mono">'+esc(B.story.title)+'</div>'+B.story.lines.map((l,i)=>`<p style="margin:10px 0 0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.88)"><span class="mono" style="color:var(--peach);margin-right:8px">0${i+1}</span>${esc(l)}</p>`).join(''); p2.append(c); }
   if(C.intro?.forty) p2.append(h(`<div class="card"><div class="mono">40 seconds</div><p class="speech" style="font-size:17px">${esc(C.intro.forty)}</p></div>`));
   if(C.three){ p2.append(h(`<div class="sec"><div class="mono">Lisa's three, the hooks</div></div>`)); const c=document.createElement('div'); c.className='card tl'; C.three.forEach((t,i)=>c.append(h(`<div class="it"><div class="t">0${i+1}</div><div><div class="h">${esc(t.remember||'')}</div><div class="s">${esc(t.a)}</div></div></div>`))); p2.append(c); }
   H.forEach(x => { const c=document.createElement('div'); c.className='card'; c.innerHTML = `<div class="mono">Say to ${esc(x.name)}</div>` + (x.say||[]).map(s=>`<p style="margin:10px 0 0;font-size:14px;color:var(--peach)">${esc(s)}</p>`).join('') + `<div class="btns">${(x.links||[]).slice(0,3).map(l=>`<a class="btn" href="${esc(l.u)}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px;padding:7px 12px">${esc(l.t)}</a>`).join('')}</div>`; p2.append(c); });
@@ -506,9 +560,44 @@ function drill(){
   $('#fshuf').onclick = () => { for(let i=all.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=all[i]; all[i]=all[j]; all[j]=t; } drillState.i=0; draw(); };
   chips.firstElementChild && V.querySelector('.chips').addEventListener('click', e => { const b=e.target.closest('.chip'); if(!b) return; [...b.parentNode.children].forEach(x=>x.classList.toggle('on',x===b)); drillState.f=b.dataset.f; drillState.i=0; draw(); });
   draw();
+  document.onkeydown = e => { if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key===' '||e.key==='Enter'){ e.preventDefault(); card.onclick(); } else if(e.key==='ArrowRight'||e.key==='j'){ $('#fnext').click(); } else if(e.key==='ArrowLeft'||e.key==='k'){ $('#fprev').click(); } else if(e.key==='s'){ $('#fshuf').click(); } };
+  V.append(h(`<div class="mono kb" style="text-align:center;margin-top:10px;color:var(--dim)">space reveal · → next · ← back · s shuffle</div>`));
   if(C.ask){ V.append(h(`<div class="sec"><div class="mono">Ask them</div></div>`)); const c=document.createElement('div'); c.className='card tl'; C.ask.forEach((r,i)=>c.append(h(`<div class="it"><div class="t">${String(i+1).padStart(2,'0')}</div><div class="h">${esc(r)}</div></div>`))); V.append(c); }
   if(C.followup?.email){ V.append(h(`<div class="sec"><div class="mono">Tomorrow's follow up</div><button class="mono" id="cpy">Copy</button></div>`)); V.append(h(`<div class="card email">${esc(C.followup.email)}</div>`)); $('#cpy').onclick = async () => { try{ await navigator.clipboard.writeText(C.followup.email); $('#cpy').textContent='Copied'; $('#cpy').classList.add('copyok'); }catch{ $('#cpy').textContent='Select and copy'; } }; }
 }
+
+function sentences(t){ return String(t||'').match(/[^.!?]+[.!?]+/g)||[t]; }
+function learn(){
+  const C=B.content||{}; const P=(B.people||[]).filter(p=>p.tier==='A').sort((a,b)=>a.name.localeCompare(b.name));
+  V.append(h(`<div class="hero sky" style="min-height:220px"><div class="mono">Learn</div><p class="lead">Memorize the shape, not the words. Five beats, three hooks, thirteen names, ten facts.</p><div class="foot"><div class="mono">Test me hides the answers</div><button class="chip" id="testme" style="background:#fff;color:#000;border-color:#fff">Test me</button></div></div>`));
+  const L=document.createElement('div'); L.className='learn'; V.append(L);
+  // 40 seconds in beats
+  const beats=sentences(C.intro?.forty||'');
+  L.append(h(`<div class="card"><div class="mono">The forty seconds, in beats</div><div class="beats">${beats.map((b,i)=>`<div class="beat"><div class="t">${String(i+1).padStart(2,'0')}</div><div class="hook">${esc(b.trim().split(/\s+/).slice(0,4).join(' '))}…</div><div class="full ans">${esc(b.trim())}</div></div>`).join('')}</div></div>`));
+  if(B.story) L.append(h(`<div class="card"><div class="mono">${esc(B.story.title)}</div>${B.story.lines.map((l,i)=>`<div class="beat"><div class="t">0${i+1}</div><div class="hook">${esc(l.split(/\s+/).slice(0,5).join(' '))}…</div><div class="full ans">${esc(l)}</div></div>`).join('')}</div>`));
+  // three hooks
+  L.append(h(`<div class="card"><div class="mono">Lisa's three, hook then answer</div>${(C.three||[]).map((t,i)=>`<div class="beat"><div class="t">0${i+1}</div><div class="hook">${esc(t.remember||'')}</div><div class="full ans"><div style="color:var(--mute);font-size:13px;margin-bottom:4px">${esc(t.q)}</div>${esc(t.a)}</div></div>`).join('')}</div>`));
+  // names
+  L.append(h(`<div class="card"><div class="mono">Thirteen names, one line each</div><div class="names">${P.map(p=>`<div class="beat"><img class="av" src="${esc(p.avatar||'')}" onerror="this.style.visibility='hidden'" alt=""><div class="hook">${esc(p.name)}</div><div class="full ans">${esc([p.title,p.company].filter(Boolean).join(' · '))}${p.why?'<br>'+esc(p.why):''}${p.opener?'<div class="op">'+esc(p.opener)+'</div>':''}</div></div>`).join('')}</div></div>`));
+  // hosts
+  (B.hosts||[]).forEach(x=>L.append(h(`<div class="card"><div class="mono">Say to ${esc(x.name)}</div>${(x.say||[]).map((s,i)=>`<div class="beat"><div class="t">0${i+1}</div><div class="hook">${esc(s.split(/\s+/).slice(0,5).join(' '))}…</div><div class="full ans">${esc(s)}</div></div>`).join('')}</div>`)));
+  // facts
+  L.append(h(`<div class="card"><div class="mono">Ten facts</div>${(C.facts||[]).map(f=>`<div class="beat"><div class="t" style="min-width:110px">${esc(f.k)}</div><div class="full ans">${esc(f.v)}</div></div>`).join('')}</div>`));
+  // drill table
+  const Q=(C.drill||[]).concat((C.objections||[]).map(o=>({cat:'objection',q:o.o,a:o.r})));
+  L.append(h(`<div class="card"><div class="mono">Every question, every answer</div>${Q.map(q=>`<div class="beat qa"><div class="t">${esc(q.cat)}</div><div class="hook">${esc(q.q)}</div><div class="full ans">${esc(q.a)}${q.trap?`<div class="trap">Do not · ${esc(q.trap)}</div>`:''}</div></div>`).join('')}</div>`));
+  $('#testme').onclick = e => { L.classList.toggle('test'); e.target.textContent = L.classList.contains('test')?'Show all':'Test me'; };
+  L.addEventListener('click', e => { const b=e.target.closest('.beat'); if(b && L.classList.contains('test')) b.classList.toggle('show'); });
+}
+function renderRail(){
+  const r=$('#rail'); if(!r) return; const C=B.content||{}, D=B.day||{}, Bf=B.brief||{};
+  r.innerHTML = `<div class="card"><div class="mono">Now</div><div class="v" style="font-family:var(--disp);font-weight:200;font-size:40px;letter-spacing:-.03em;margin-top:6px" id="cd2">${fmtCountdown()}</div><div class="mono" style="margin-top:2px">until lunch · leave ${esc(D.leave||'')}</div></div>
+  <div class="card"><div class="mono">Forty seconds</div><p style="font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.85);margin:8px 0 0">${esc(C.intro?.forty||'')}</p></div>
+  <div class="card"><div class="mono">Hooks</div>${(C.three||[]).map((t,i)=>`<div style="display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px"><span class="mono" style="color:var(--peach)">0${i+1}</span>${esc(t.remember||'')}</div>`).join('')}</div>
+  <div class="card"><div class="mono">Quick links</div><div class="btns" style="margin-top:8px">${(Bf.quick||[]).slice(0,6).map(q=>`<a class="btn" style="font-size:12px;padding:6px 10px;text-decoration:none" href="${esc(q.u)}" target="_blank" rel="noopener">${esc(q.t)}</a>`).join('')}</div></div>
+  <div class="card"><div class="mono">Ada</div><p style="font-size:13px;color:var(--mute);margin:6px 0 0">Tap the pill. Table, Grill, Drill, Flow, Q&A, Memo. Say "tell me" to get the answer.</p></div>`;
+}
+
 function speak(t){ try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.rate=0.98; const vs=speechSynthesis.getVoices(); const v = vs.find(v=>/Samantha|Ava|Allison|Zoe/.test(v.name)) || vs.find(v=>v.lang==='en-US'); if(v) u.voice=v; speechSynthesis.speak(u); }catch{} }
 
 </script>
