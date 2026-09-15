@@ -145,7 +145,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #voice{position:fixed;inset:0;background:var(--bg);z-index:40;display:none;flex-direction:column;padding:calc(var(--sat) + 12px) 18px calc(var(--sab) + 16px)}
 #voice.on{display:flex}
 #voice .vt{display:flex;justify-content:space-between;align-items:center}
-#voice .orbwrap{display:flex;justify-content:center;margin:22px 0 8px}
 .orb{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f2d3c2 0%,#c98f87 30%,#3d4468 65%,#0a0d16 100%);filter:blur(0px);transition:transform .25s}
 .orb.talk{animation:breathe 1.1s ease-in-out infinite}
 .orb.listen{animation:breathe 2.6s ease-in-out infinite}
@@ -156,6 +155,10 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #voice .tr .m{color:#fff;margin:8px 0}
 #voice .tr .u::before{content:"YOU ";font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--dim)}
 #voice .tr .m::before{content:"ADA ";font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--peach)}
+#voice .tr .tool{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--dim);margin:6px 0}
+#voice .orbwrap{position:relative;width:200px;height:200px;margin:18px auto 6px;display:flex;align-items:center;justify-content:center}
+#voice .orbwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+#voice .orbwrap:has(canvas) .orb{display:none}
 #voice .vb{display:flex;gap:8px;justify-content:center;margin-top:10px}
 #voice .settings{margin-top:10px;display:none}
 #voice .settings.on{display:block}
@@ -194,7 +197,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 
 <div id="voice">
   <div class="vt"><div class="mono">Ada · voice coach</div><div style="display:flex;gap:14px"><button class="mono" id="vset">Settings</button><button class="mono" id="vclose">Close</button></div></div>
-  <div class="orbwrap"><div class="orb" id="orb"></div></div>
+  <div class="orbwrap" id="orbwrap"><div class="orb" id="orb"></div></div>
+  <div class="mono" id="vstate" style="text-align:center;min-height:14px;color:var(--dim)"></div>
   <div class="st" id="vst">Tap start. Ada knows the whole package.</div>
   <div class="chips" style="justify-content:center" id="modes">
     <button class="chip on" data-m="table">Table</button>
@@ -203,12 +207,13 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
     <button class="chip" data-m="free">Free</button>
   </div>
   <div class="tr" id="vtr"></div>
+  <div id="vnotes"></div>
   <div class="settings" id="vsettings">
     <div class="mono">OpenAI API key</div>
     <input id="vkey" type="password" placeholder="sk-..." autocomplete="off">
     <div class="mono" style="margin-top:12px">Voice</div>
     <select id="vvoice"><option value="gleam">Gleam · North American, natural</option><option value="meridian">Meridian · North American, natural</option><option value="vesper">Vesper · British, natural</option><option value="willow">Willow · Irish, natural</option><option value="stone">Stone · Irish, natural</option><option value="ripple">Ripple · Australian, natural</option><option value="quartz">Quartz · Australian</option></select>
-    <div class="hint">Key stays in this phone's browser only. Voice is GPT-Live 1 with a GPT 5.6 backend. About 5 cents a minute.</div>
+    <div class="hint">Voice is GPT-Live 1 with a GPT 5.6 Terra backend that can read this page: time, schedule, every guest, hosts, summit programme, pitch, drill, research. Ask it anything. About 5 cents a minute plus backend usage.</div>
   </div>
   <div class="vb"><button class="btn w" id="vstart">Start</button><button class="btn" id="vstop" hidden>End</button><button class="btn" id="vmute" hidden>Mute</button></div>
 </div>
@@ -440,64 +445,9 @@ function drill(){
 }
 function speak(t){ try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.rate=0.98; const vs=speechSynthesis.getVoices(); const v = vs.find(v=>/Samantha|Ava|Allison|Zoe/.test(v.name)) || vs.find(v=>v.lang==='en-US'); if(v) u.voice=v; speechSynthesis.speak(u); }catch{} }
 
-/* ---------- voice: GPT-Live 1 over WebRTC ---------- */
-const VS = { peer:null, ch:null, mic:null, audio:null, ready:false, mode:'table', muted:false, closeT:null };
-$('#pill').onclick = () => { $('#voice').classList.add('on'); const k = getKey(); $('#vkey').value = k; if(!k){ $('#vsettings').classList.add('on'); $('#vst').textContent='Paste an OpenAI API key in settings, then start.'; } };
-$('#vclose').onclick = () => { $('#voice').classList.remove('on'); };
-$('#vset').onclick = () => $('#vsettings').classList.toggle('on');
-$('#vkey').addEventListener('change', e => { try{ localStorage.setItem('oak', e.target.value.trim()); }catch{} });
-$('#vvoice').addEventListener('change', e => { try{ localStorage.setItem('oav', e.target.value); }catch{} });
-try{ const v = localStorage.getItem('oav'); if(v) $('#vvoice').value=v; }catch{}
-function getKey(){ try{ return (localStorage.getItem('oak')||'').trim(); }catch{ return ''; } }
-$('#modes').addEventListener('click', e => { const b=e.target.closest('.chip'); if(!b) return; [...b.parentNode.children].forEach(x=>x.classList.toggle('on',x===b)); VS.mode=b.dataset.m; if(VS.ready) sendEv({type:'session.instructions.append', event_id:'mode_'+Date.now(), delegation_id:null, content: modeText(VS.mode)}); });
-function modeText(m){
-  const M = (B.content?.voice_modes)||{};
-  return M[m] || ({
-    table: "Mode TABLE. You are Lisa Dolan opening the lunch. Ask George to introduce himself in forty seconds, listen fully, then as two different guests ask one sharp follow up each. Keep it moving.",
-    grill: "Mode GRILL. You are a skeptical operator investor at this table. Ask hard questions about traction, moat, why now and why him. One question at a time. Push back once on weak answers, then move on.",
-    drill: "Mode DRILL. Fire one question from the drill list, wait for the answer, score it one to five in one short sentence with one fix, then the next question.",
-    free: "Mode FREE. Normal conversation. Help George rehearse whatever he asks."
-  })[m];
-}
-function sendEv(o){ if(VS.ch && VS.ch.readyState==='open') VS.ch.send(JSON.stringify(o)); }
-function line(cls, txt){ const tr=$('#vtr'); let last = tr.lastElementChild; if(last && last.className===cls && last.dataset.open==='1'){ last.textContent += txt; } else { last = document.createElement('div'); last.className=cls; last.dataset.open='1'; last.textContent=txt; tr.append(last); } tr.scrollTop = tr.scrollHeight; }
-function closeLines(){ [...$('#vtr').children].forEach(x=>x.dataset.open='0'); }
-function vcleanup(){ clearTimeout(VS.closeT); VS.mic?.getTracks().forEach(t=>t.stop()); try{VS.ch?.close()}catch{} try{VS.peer?.close()}catch{} if(VS.audio) VS.audio.srcObject=null; VS.ready=false; $('#vstart').hidden=false; $('#vstop').hidden=true; $('#vmute').hidden=true; $('#orb').className='orb'; $('#pill').classList.remove('live'); }
-$('#vstop').onclick = () => { if(!VS.ready) return vcleanup(); $('#vst').textContent='Ending…'; sendEv({type:'session.close'}); VS.closeT=setTimeout(vcleanup, 8000); };
-$('#vmute').onclick = () => { VS.muted=!VS.muted; sendEv({type: VS.muted?'session.input_audio.mute':'session.input_audio.unmute', event_id:'m'+Date.now()}); $('#vmute').textContent = VS.muted?'Unmute':'Mute'; };
-$('#vstart').onclick = async () => {
-  const key = getKey(); if(!key){ $('#vsettings').classList.add('on'); $('#vst').textContent='Need an OpenAI API key first.'; return; }
-  $('#vstart').hidden=true; $('#vst').textContent='Connecting…'; $('#orb').className='orb listen';
-  try{
-    if(!VS.audio){ VS.audio = new Audio(); VS.audio.autoplay=true; VS.audio.playsInline=true; VS.audio.setAttribute('playsinline',''); }
-    const pc = new RTCPeerConnection(); VS.peer = pc;
-    pc.addEventListener('track', ev => { VS.audio.srcObject = new MediaStream([ev.track]); VS.audio.play().catch(()=>{ $('#vst').textContent='Tap the orb to unmute playback.'; $('#orb').onclick=()=>VS.audio.play(); }); });
-    VS.mic = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}});
-    VS.mic.getAudioTracks().forEach(t => pc.addTrack(t, VS.mic));
-    const ch = pc.createDataChannel('oai-events'); VS.ch = ch;
-    ch.addEventListener('message', ({data}) => {
-      let ev; try{ ev = JSON.parse(data); }catch{ return; }
-      if(ev.type==='session.started'){ VS.ready=true; $('#vst').textContent='Live. Talk.'; $('#vstop').hidden=false; $('#vmute').hidden=false; $('#pill').classList.add('live'); sendEv({type:'session.instructions.append', event_id:'mode0', delegation_id:null, content: modeText(VS.mode)}); }
-      else if(ev.type==='session.closed'){ $('#vst').textContent='Ended. ' + (ev.usage?.seconds? Math.round(ev.usage.seconds)+'s used.':''); vcleanup(); }
-      else if(ev.type==='session.input_transcript.delta'){ $('#orb').className='orb listen'; line('u', ev.delta||''); }
-      else if(ev.type==='session.output_transcript.delta'){ $('#orb').className='orb talk'; line('m', ev.delta||''); }
-      else if(ev.type==='session.usage.updated'){ /* ignore */ }
-      else if(ev.type==='error'){ $('#vst').textContent = 'Error: ' + (ev.error?.message || JSON.stringify(ev).slice(0,140)); }
-      else if(/turn|speech_stopped|output_done|response\.done/.test(ev.type||'')){ closeLines(); }
-    });
-    ch.addEventListener('close', () => { if(VS.ready) { $('#vst').textContent='Disconnected.'; } vcleanup(); });
-    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-    if(pc.iceGatheringState!=='complete'){ await new Promise(res => { const to=setTimeout(res, 4000); pc.addEventListener('icegatheringstatechange', ()=>{ if(pc.iceGatheringState==='complete'){ clearTimeout(to); res(); } }); }); }
-    const sdp = pc.localDescription.sdp;
-    const voice = $('#vvoice').value || 'gleam';
-    const body = { session: { model:'gpt-live-1', instructions: (B.content?.voice_persona || 'You are Ada, a calm founder coach.'), audio:{ output:{ voice } }, delegation:{ type:'responses', responses:{ model:'gpt-5.6-terra', instructions: (B.backend_instructions || 'You support a live voice coach. Answer briefly with facts from the package.') } } }, transport:{ type:'webrtc', sdp } };
-    const r = await fetch('https://api.openai.com/v1/live/sessions', { method:'POST', headers:{ 'Authorization':'Bearer '+key, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-    if(!r.ok){ const t = await r.text(); throw new Error('OpenAI ' + r.status + ': ' + t.slice(0,220)); }
-    const res = await r.json();
-    await pc.setRemoteDescription({ type:'answer', sdp: res.transport.sdp });
-    $('#vst').textContent='Session ' + (res.session?.id||'') + ' · waiting for start…';
-  }catch(e){ $('#vst').textContent = e.message || String(e); vcleanup(); }
-};
 </script>
+<script src="viz.js"></script>
+<script src="voice.js"></script>
+
 </body>
 </html>
