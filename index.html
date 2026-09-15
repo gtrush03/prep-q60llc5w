@@ -451,7 +451,7 @@ async function copyCtx(short){
 }
 $('#cpctx').onclick = (e) => copyCtx(false);
 
-function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill, deck, learn})[tab](); if(tab!=='drill') document.onkeydown=null; renderRail(); }
+function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill, deck, learn})[tab](); if(tab!=='drill' && tab!=='deck') document.onkeydown=null; renderRail(); }
 const A = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--sky);text-decoration:none">${esc(t)}</a>` : esc(t);
 
 function brief(){
