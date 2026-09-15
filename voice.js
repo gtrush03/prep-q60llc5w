@@ -1,6 +1,6 @@
 /* Ada: GPT-Live 1 over WebRTC with a GPT 5.6 backend and client-executed tools. Expects globals: B (bundle), $, esc, h, fmtCountdown. */
 (function(){
-const VS = { peer:null, ch:null, mic:null, audio:null, ready:false, mode:'table', muted:false, closeT:null, timeT:null, remote:null, pendingCalls:0, state:'idle' };
+const VS = { peer:null, ch:null, mic:null, audio:null, ready:false, mode:'table', muted:false, closeT:null, timeT:null, remote:null, pendingCalls:0, state:'idle', startedAt:0, asked:[], memo:'', memoOn:false, toolsUsed:{} };
 const PT = 'America/Los_Angeles';
 const nowPT = () => new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:PT});
 const LUNCH = new Date('2026-09-15T12:00:00-07:00');
@@ -27,6 +27,8 @@ const T = {
   save_note: { d:'Save a note for George (a person he met, a follow-up, a fact to remember, a thing to fix in the pitch). Shows in the app.', p:{type:'object',properties:{text:{type:'string'}},required:['text']}, f({text}){ const n=addNote(text); return { saved:true, total:n }; } },
   list_notes: { d:'List the notes saved so far.', p:{type:'object',properties:{}}, f(){ return { notes:getNotes() }; } },
   set_mode: { d:'Switch the coaching mode: table (Lisa opens, go round the table), grill (skeptical investor), drill (rapid questions with scores), free.', p:{type:'object',properties:{mode:{type:'string',enum:['table','grill','drill','free']}},required:['mode']}, f({mode}){ setMode(mode, true); return { mode }; } },
+  get_state: { d:'Everything about the current session state: mode, how long the session has run, which app tab George has open, notes and scores saved so far, drill questions already asked, whether a memo is being recorded, tools used. Call it when you need to know where you are or what has been covered.', p:{type:'object',properties:{}}, f(){ const notes=getNotes(); return { mode:VS.mode, session_seconds: VS.startedAt? Math.round((Date.now()-VS.startedAt)/1000):0, app_tab: (typeof tab!=='undefined'? tab : null), notes_count: notes.length, last_notes: notes.slice(-5).map(n=>n.t), scores: notes.filter(n=>/^Score \d\/5/.test(n.t)).map(n=>n.t), drill_asked: VS.asked.slice(-10), memo_recording: VS.memoOn, memo_chars: VS.memo.length, tools_used: VS.toolsUsed, time: T.get_time.f() }; } },
+  end_memo: { d:'Finish the voice memo George is recording: saves the transcript as a note and returns it so you can read back a two sentence summary.', p:{type:'object',properties:{}}, f(){ return endMemo(); } },
   model_answer: { d:'The sharp prepared TRU Synth answer to a question, written as George would say it. Call this the moment George says "I don\'t know", "idk", "tell me", "what would you say", "skip", "help", or gives up on a question. Finds the closest drill question, objection, or one of Lisa\'s three, and returns the model answer plus the trap to avoid. If nothing matches closely, it returns the facts sheet so you can compose a tight answer yourself.', p:{type:'object',properties:{question:{type:'string',description:'the question George was asked, in your words'}},required:['question']}, f({question}){ const C=B.content||{}; const q=String(question||'').toLowerCase().split(/\W+/).filter(w=>w.length>3); const pool=[]; (C.drill||[]).forEach(d=>pool.push({kind:d.cat,q:d.q,a:d.a,trap:d.trap})); (C.objections||[]).forEach(o=>pool.push({kind:'objection',q:o.o,a:o.r})); (C.three||[]).forEach(t=>pool.push({kind:'lisa',q:t.q,a:t.a,trap:t.remember?'remember: '+t.remember:''})); const scored=pool.map(x=>[q.reduce((n,w)=>n+((x.q+' '+x.a).toLowerCase().includes(w)?1:0),0),x]).sort((a,b)=>b[0]-a[0]); const best=scored[0]; if(best && best[0]>=2) return { match:best[1].q, answer:best[1].a, trap:best[1].trap||'', say_it_as:'first person, George speaking, two to four sentences, calm, concrete, then ask him to repeat it back', also:scored.slice(1,3).filter(x=>x[0]>=2).map(x=>({q:x[1].q,a:x[1].a})) }; return { match:null, facts:(C.facts||[]).map(f=>f.k+': '+f.v), one_line:C.intro?.one_line, forty:C.intro?.forty, rules:C.rules, hint:'compose a sharp two to four sentence answer from these facts, first person as George, no hedging' }; } },
   score_answer: { d:'Record a score George got on a practice answer so progress is tracked. 1 to 5.', p:{type:'object',properties:{question:{type:'string'},score:{type:'integer'},fix:{type:'string'}},required:['question','score']}, f({question,score,fix}){ addNote(`Score ${score}/5 · ${question}${fix?' · fix: '+fix:''}`); return { recorded:true }; } }
 };
@@ -41,21 +43,28 @@ function liveInstructions(){
 ## Live rules
 Speak warmly, quickly, naturally, like a sharp friend, not a narrator. Short turns. Stop the moment George speaks. Light backchannels are fine.
 Whenever George asks about the time, the schedule, the route, a person, the summit programme, the pitch text, facts, or research, delegate to the backend: it has tools that look these up. Never guess a name, a time, or a number. While the backend works, keep it brief: say you are checking, then read out the result in one or two sentences.
-Modes: table, grill, drill, free. Switch when George asks.
+Modes: table, grill, drill, flow, memo, free. Switch when George asks. In memo mode you are silent until the memo ends.
 The bail-out rule, in every mode: if George says "I don't know", "idk", "tell me", "what would you say", "skip", "help me", or clearly stalls, do not push back and do not lecture. Delegate immediately to get the prepared TRU Synth answer, then deliver it as George would say it, first person, two to four sentences, sharp and concrete, and finish with "now you say it". When he repeats it, give one line of feedback and move on.`;
 }
 function backendInstructions(){
   return (B.backend_instructions||'') + `
 
 ## Tools
-You have tools that read the live prep package on George's phone: get_time (always call it for anything time related, it also tells you what is happening now and next), get_schedule, find_people, get_person, get_hosts, get_summit, get_pitch, get_drill, search_research, save_note, list_notes, set_mode, score_answer, model_answer. Call them instead of guessing. When George bails on a question with anything like I don't know, tell me, what would you say, skip, or help, call model_answer with the question and return the answer written in first person as George would say it, two to four sentences, no hedging, ending with a cue for him to repeat it. Chain them when useful (find_people then get_person). When George says he met someone or wants to remember something, call save_note. When you score a practice answer, call score_answer. Return results as short spoken sentences, at most three, with the exact names and numbers from the tools. Never invent a person who is not in the list.`;
+You have tools that read the live prep package on George's phone: get_time (always call it for anything time related, it also tells you what is happening now and next), get_schedule, find_people, get_person, get_hosts, get_summit, get_pitch, get_drill, search_research, save_note, list_notes, set_mode, score_answer, model_answer, get_state, end_memo. Call get_state when unsure what has been covered. Call them instead of guessing. When George bails on a question with anything like I don't know, tell me, what would you say, skip, or help, call model_answer with the question and return the answer written in first person as George would say it, two to four sentences, no hedging, ending with a cue for him to repeat it. Chain them when useful (find_people then get_person). When George says he met someone or wants to remember something, call save_note. When you score a practice answer, call score_answer. Return results as short spoken sentences, at most three, with the exact names and numbers from the tools. Never invent a person who is not in the list.`;
 }
 function modeText(m){ const M=(B.content?.voice_modes)||{}; return M[m] || 'Mode '+m+'.'; }
+
+
+/* ---------- memo ---------- */
+function startMemo(){ VS.memo=''; VS.memoOn=true; $('#vdone').hidden=false; setStatus('Recording memo. Talk. Tap Done or say "done".'); if(VS.ready) sendEv({type:'session.instructions.append', event_id:'memo_on', delegation_id:null, content:'MEMO MODE. George is recording a voice memo. Stay completely silent. Do not speak, do not backchannel, do not respond, until the memo is ended by a tool result or George clearly says "done" or "end memo". Then call end_memo through the backend and read back a two sentence summary.'}); }
+function endMemo(){ VS.memoOn=false; $('#vdone').hidden=true; const text=VS.memo.trim(); if(text){ addNote('Memo · '+text.slice(0,600)); } setStatus(text? 'Memo saved.' : 'Empty memo.'); const t=text; VS.memo=''; return { saved: !!t, memo: t || '(nothing captured)' }; }
+$('#vdone').onclick = () => { const r=endMemo(); if(VS.ready) sendEv({type:'session.instructions.append', event_id:'memo_off', delegation_id:null, content:'Memo ended. Memo text: "'+String(r.memo).slice(0,900)+'". Read back a two sentence summary now, then return to mode '+(VS.mode==='memo'?'free':VS.mode)+'.'}); if(VS.mode==='memo') setMode('free', true); };
+$('#vtr').addEventListener('click', () => $('#vtr').classList.toggle('full'));
 
 /* ---------- ui ---------- */
 const setStatus = s => { const el=$('#vst'); if(el) el.textContent=s; };
 function setViz(state){ VS.state=state; if(window.AdaViz){ try{ AdaViz.setState(state); }catch{} } else { const o=$('#orb'); if(o) o.className = 'orb ' + ({listening:'listen',speaking:'talk'}[state]||''); } const lb=$('#vstate'); if(lb) lb.textContent = ({idle:'', connecting:'connecting', listening:'listening', thinking:'thinking', speaking:'speaking', ended:'ended'})[state]||''; }
-function setMode(m, fromTool){ VS.mode=m; [...$('#modes').children].forEach(x=>x.classList.toggle('on', x.dataset.m===m)); if(VS.ready && !fromTool) sendEv({type:'session.instructions.append', event_id:'mode_'+Date.now(), delegation_id:null, content: modeText(m)}); if(fromTool && VS.ready) sendEv({type:'session.instructions.append', event_id:'mode_'+Date.now(), delegation_id:null, content: modeText(m)}); }
+function setMode(m, fromTool){ const prev=VS.mode; VS.mode=m; if(m==='memo' && !VS.memoOn) startMemo(); if(prev==='memo' && m!=='memo' && VS.memoOn) endMemo(); [...$('#modes').children].forEach(x=>x.classList.toggle('on', x.dataset.m===m)); if(VS.ready && !fromTool) sendEv({type:'session.instructions.append', event_id:'mode_'+Date.now(), delegation_id:null, content: modeText(m)}); if(fromTool && VS.ready) sendEv({type:'session.instructions.append', event_id:'mode_'+Date.now(), delegation_id:null, content: modeText(m)}); }
 function sendEv(o){ if(VS.ch && VS.ch.readyState==='open') VS.ch.send(JSON.stringify(o)); }
 function line(cls, txt){ const tr=$('#vtr'); let last=tr.lastElementChild; if(last && last.className===cls && last.dataset.open==='1'){ last.textContent += txt; } else { last=document.createElement('div'); last.className=cls; last.dataset.open='1'; last.textContent=txt; tr.append(last); } tr.scrollTop=tr.scrollHeight; }
 function toolLine(txt){ const tr=$('#vtr'); const d=document.createElement('div'); d.className='tool'; d.textContent=txt; tr.append(d); tr.scrollTop=tr.scrollHeight; }
@@ -70,7 +79,7 @@ $('#vvoice').addEventListener('change', e => { try{ localStorage.setItem('oav', 
 try{ const v=localStorage.getItem('oav'); if(v) $('#vvoice').value=v; }catch{}
 $('#modes').addEventListener('click', e => { const b=e.target.closest('.chip'); if(!b) return; setMode(b.dataset.m, false); });
 
-function vcleanup(){ clearTimeout(VS.closeT); clearInterval(VS.timeT); VS.mic?.getTracks().forEach(t=>t.stop()); try{VS.ch?.close()}catch{} try{VS.peer?.close()}catch{} if(VS.audio) VS.audio.srcObject=null; VS.ready=false; $('#vstart').hidden=false; $('#vstop').hidden=true; $('#vmute').hidden=true; $('#pill').classList.remove('live'); setViz(VS.state==='connecting'?'idle':'ended'); setTimeout(()=>{ if(!VS.ready) setViz('idle'); }, 2500); }
+function vcleanup(){ if(VS.memoOn) endMemo(); clearTimeout(VS.closeT); clearInterval(VS.timeT); VS.mic?.getTracks().forEach(t=>t.stop()); try{VS.ch?.close()}catch{} try{VS.peer?.close()}catch{} if(VS.audio) VS.audio.srcObject=null; VS.ready=false; $('#vstart').hidden=false; $('#vstop').hidden=true; $('#vmute').hidden=true; $('#pill').classList.remove('live'); setViz(VS.state==='connecting'?'idle':'ended'); setTimeout(()=>{ if(!VS.ready) setViz('idle'); }, 2500); }
 $('#vstop').onclick = () => { if(!VS.ready) return vcleanup(); setStatus('Ending…'); sendEv({type:'session.close'}); VS.closeT=setTimeout(vcleanup, 8000); };
 $('#vmute').onclick = () => { VS.muted=!VS.muted; sendEv({type: VS.muted?'session.input_audio.mute':'session.input_audio.unmute', event_id:'m'+Date.now()}); $('#vmute').textContent = VS.muted?'Unmute':'Mute'; };
 
@@ -78,21 +87,21 @@ let speakT=null;
 function onEvent(ev){
   switch(ev.type){
     case 'session.started': {
-      VS.ready=true; setStatus('Live. Talk.'); $('#vstop').hidden=false; $('#vmute').hidden=false; $('#pill').classList.add('live'); setViz('listening');
+      VS.ready=true; VS.startedAt=Date.now(); setStatus('Live. Talk.'); $('#vstop').hidden=false; $('#vmute').hidden=false; $('#pill').classList.add('live'); setViz('listening');
       const t=T.get_time.f();
       sendEv({type:'session.thinking.append', event_id:'ctx0', delegation_id:null, content:`It is ${t.time_pt} Pacific on Tuesday 15 September 2026. Lunch is in ${t.minutes_until_lunch} minutes. Mode: ${VS.mode}. George is on his phone.`});
-      sendEv({type:'session.instructions.append', event_id:'mode0', delegation_id:null, content: modeText(VS.mode)});
-      VS.timeT = setInterval(()=>{ const t=T.get_time.f(); sendEv({type:'session.thinking.append', event_id:'clock'+Date.now(), delegation_id:null, content:`Time check: ${t.time_pt} PT, ${t.minutes_until_lunch} minutes to lunch.${t.next?' Next: '+t.next.t+' '+t.next.h:''}`}); }, 5*60000);
+      sendEv({type:'session.instructions.append', event_id:'mode0', delegation_id:null, content: modeText(VS.mode)}); if(VS.mode==='memo') startMemo();
+      VS.timeT = setInterval(()=>{ const t=T.get_time.f(); sendEv({type:'session.thinking.append', event_id:'clock'+Date.now(), delegation_id:null, content:`Time check: ${t.time_pt} PT, ${t.minutes_until_lunch} minutes to lunch.${t.next?' Next: '+t.next.t+' '+t.next.h:''} Mode ${VS.mode}, session ${Math.round((Date.now()-VS.startedAt)/60000)} min, ${getNotes().length} notes.`}); }, 5*60000);
       break; }
     case 'session.closed': setStatus('Ended. ' + (ev.usage?.seconds? Math.round(ev.usage.seconds)+'s used.':'')); vcleanup(); break;
-    case 'session.input_transcript.delta': setViz('listening'); line('u', ev.delta||''); break;
+    case 'session.input_transcript.delta': setViz('listening'); line('u', ev.delta||''); if(VS.memoOn){ VS.memo += (ev.delta||''); if(/\b(done|end memo|stop memo)\b\s*[.!]?\s*$/i.test(VS.memo.slice(-40))){ VS.memo=VS.memo.replace(/\b(done|end memo|stop memo)\b\s*[.!]?\s*$/i,''); $('#vdone').click(); } } break;
     case 'session.output_transcript.delta': setViz('speaking'); line('m', ev.delta||''); clearTimeout(speakT); speakT=setTimeout(()=>{ if(VS.ready) setViz('listening'); closeLines(); }, 1400); break;
     case 'session.delegation.created': setViz('thinking'); break;
     case 'response.event': {
       const e=ev.event||{};
       if(e.type==='response.output_item.done' && e.item?.type==='function_call'){
         const {name, arguments:args, call_id} = e.item; toolLine('→ '+name+(args && args!=='{}'? ' '+args.slice(0,80):''));
-        const out = runTool(name, args);
+        const out = runTool(name, args); VS.toolsUsed[name]=(VS.toolsUsed[name]||0)+1; if(name==='get_drill' && out.questions) out.questions.forEach(q=>VS.asked.push(q.q));
         sendEv({type:'response.item.create', event_id:'tool_'+Date.now(), item:{type:'function_call_output', call_id, output: JSON.stringify(out).slice(0, 12000)}});
         sendEv({type:'response.create', event_id:'cont_'+Date.now()});
       } else if(e.type==='response.completed' || e.type==='response.failed'){ if(VS.state==='thinking') setViz('listening'); }
