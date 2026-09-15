@@ -156,7 +156,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #voice .tr .u::before{content:"YOU ";font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--dim)}
 #voice .tr .m::before{content:"ADA ";font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--peach)}
 
-#voice .vcards{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:14px -18px 0;padding:0 18px 6px;scrollbar-width:none;flex:0 0 auto;max-height:46vh}
+#voice .vcards{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:14px -18px 0;padding:0 18px 6px;scrollbar-width:none;flex:0 0 auto;max-height:46vh}
 #voice .vcards::-webkit-scrollbar{display:none}
 #voice .vcard{flex:0 0 84%;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px 16px 14px;opacity:0;transform:translateY(8px) scale(.98);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.2,1);overflow-y:auto;max-height:44vh}
 #voice .vcard.in{opacity:1;transform:none}
@@ -180,11 +180,11 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 #voice .vcard .a{margin-top:10px;font-size:14px;color:rgba(255,255,255,.9)}
 #voice .vcard .trap{margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(217,160,168,.08);border:1px solid rgba(217,160,168,.2);font-size:12.5px;color:var(--rose)}
 #voice .vcard .tap{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:10px}
-#voice .vcard.time{background:linear-gradient(165deg,#0a1526 0%,#1f2d47 60%,#3d4468 100%);border-color:transparent}
-#voice .vcard.answer{background:linear-gradient(165deg,#0b0b12 0%,#2a1f2e 70%,#4a3340 100%);border-color:transparent}
+#voice .vcard.k-time{background:linear-gradient(165deg,#0a1526 0%,#1f2d47 60%,#3d4468 100%);border-color:transparent}
+#voice .vcard.k-answer{background:linear-gradient(165deg,#0b0b12 0%,#2a1f2e 70%,#4a3340 100%);border-color:transparent}
 #voice .tr .tool{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--dim);margin:6px 0}
 #voice .orbwrap{position:relative;width:min(72vw,300px);height:min(72vw,300px);margin:6vh auto 10px;display:flex;align-items:center;justify-content:center}
-#voice #modes{justify-content:center;flex-wrap:wrap;gap:6px;margin-top:14px}
+#voice #modes{justify-content:center;flex-wrap:nowrap;gap:6px;margin-top:14px}
 #voice #modes .chip{padding:7px 12px;font-size:12px}
 #voice .tr{flex:1;overflow:hidden;margin-top:10px;position:relative;max-height:4.4em;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30%,#000 100%);mask-image:linear-gradient(180deg,transparent 0,#000 30%,#000 100%);display:flex;flex-direction:column;justify-content:flex-end}
 #voice .tr.full{max-height:none;overflow-y:auto;mask-image:none;-webkit-mask-image:none;justify-content:flex-start}
@@ -241,7 +241,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
     <button class="chip" data-m="flow">Flow</button>
     <button class="chip" data-m="qa">Q&amp;A</button>
     <button class="chip" data-m="memo">Memo</button>
-    <button class="chip" data-m="free">Free</button>
   </div>
   <div class="vcards" id="vcards" hidden></div>
   <div class="tr" id="vtr"></div>

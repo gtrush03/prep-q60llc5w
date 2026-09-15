@@ -67,7 +67,7 @@ $('#vtr').addEventListener('click', () => $('#vtr').classList.toggle('full'));
 const CARD_MAX=12;
 function card(kind, title, bodyHtml, opts={}){
   const wrap=$('#vcards'); if(!wrap) return;
-  const el=document.createElement('div'); el.className='vcard '+kind; el.innerHTML=`<div class="mono">${esc(title)}</div>${bodyHtml}`;
+  const el=document.createElement('div'); el.className='vcard k-'+kind; el.innerHTML=`<div class="mono">${esc(title)}</div>${bodyHtml}`;
   if(opts.onclick) el.addEventListener('click', opts.onclick);
   wrap.append(el); while(wrap.children.length>CARD_MAX) wrap.firstElementChild.remove();
   requestAnimationFrame(()=>{ el.classList.add('in'); wrap.scrollTo({left: el.offsetLeft-16, behavior:'smooth'}); });
