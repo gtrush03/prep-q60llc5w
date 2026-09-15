@@ -181,7 +181,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
     <div class="mono" id="clock"></div>
   </div>
   <div class="tabs" id="tabs">
-    <button data-t="day" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Day</span></button>
+    <button data-t="brief" class="on"><svg viewBox="0 0 24 24"><path d="M6 4h9l4 4v12H6z"/><path d="M14 4v5h5M9 13h7M9 17h5"/></svg><span>Brief</span></button>
+    <button data-t="day"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Day</span></button>
     <button data-t="room"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c0-3.2 2.6-5.2 5.5-5.2s5.5 2 5.5 5.2"/><circle cx="17" cy="10" r="2.4"/><path d="M15.5 14.6c2.7 0 5 1.7 5 4.4"/></svg><span>Room</span></button>
     <button data-t="pitch"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></svg><span>Pitch</span></button>
     <button data-t="drill"><svg viewBox="0 0 24 24"><path d="M5 19V9M10 19V5M15 19v-8M20 19v-4"/></svg><span>Drill</span></button>
@@ -279,14 +280,44 @@ function fbSvg(i){
 
 /* ---------- views ---------- */
 const V = $('#view');
-let tab = 'day';
+let tab = 'brief';
 function boot(){
   $('#gate').style.display='none'; $('#app').hidden=false; $('#pill').hidden=false;
   try{ if(B.openai_key && !localStorage.getItem('oak')) localStorage.setItem('oak', B.openai_key); }catch{}
   render(); setInterval(()=>{ const c=$('#clock'); if(c) c.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Los_Angeles'}) + ' PT'; const cd=$('#cd'); if(cd) cd.textContent = fmtCountdown(); }, 1000);
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; tab = b.dataset.t; [...$('#tabs').children].forEach(x=>x.classList.toggle('on', x===b)); render(); window.scrollTo(0,0); });
-function render(){ V.innerHTML=''; ({day, room, pitch, drill})[tab](); }
+function render(){ V.innerHTML=''; ({brief, day, room, pitch, drill})[tab](); }
+const A = (u, t) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--sky);text-decoration:none">${esc(t)}</a>` : esc(t);
+
+function brief(){
+  const C = B.content || {}, Bf = B.brief || {}, H = B.hosts || [];
+  const P = (B.people||[]).filter(p=>p.tier==='A').sort((a,b)=>a.name.localeCompare(b.name));
+  V.append(h(`<div class="hero dusk"><div class="mono">Page 1 · Plan</div><div class="big">12<small>00</small></div><div class="sub">${esc(B.day?.place||'')}</div><div class="foot"><div><div class="mono">Starts in</div><div style="font-family:var(--disp);font-weight:300;font-size:24px;letter-spacing:-.02em" id="cd">${fmtCountdown()}</div></div><div style="text-align:right"><div class="mono">Leave by</div><div style="font-family:var(--disp);font-weight:300;font-size:24px;letter-spacing:-.02em">${esc(B.day?.leave||'09:15')}</div></div></div></div>`));
+  V.append(h(`<div class="chips"><button class="chip on" data-j="p1">Plan</button><button class="chip" data-j="p2">Prep</button><button class="chip" data-j="p3">People</button></div>`));
+  V.querySelector('.chips').addEventListener('click', e => { const b=e.target.closest('.chip'); if(!b) return; const el=document.getElementById(b.dataset.j); if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 12, behavior:'smooth'}); });
+  // page 1
+  const p1 = h(`<div id="p1"></div>`).firstElementChild; V.append(p1);
+  if(Bf.beats){ const tl=document.createElement('div'); tl.className='card tl'; Bf.beats.forEach(b=>tl.append(h(`<div class="it"><div class="t">${esc(b.t)}</div><div class="h">${A(b.u,b.h)}</div></div>`))); p1.append(h(`<div class="sec"><div class="mono">The day in nine lines</div><div class="mono">tap to open</div></div>`)); p1.append(tl); }
+  if(Bf.addresses){ p1.append(h(`<div class="sec"><div class="mono">Every address</div><div class="mono">maps</div></div>`)); const c=document.createElement('div'); c.className='card tl'; Bf.addresses.forEach(a=>c.append(h(`<div class="it"><div class="t" style="font-size:10px">${esc(a.k)}</div><div class="h">${A(a.u,a.v)}</div></div>`))); p1.append(c); }
+  if(Bf.quick){ p1.append(h(`<div class="sec"><div class="mono">Quick links</div></div>`)); const c=document.createElement('div'); c.className='card'; c.innerHTML = '<div class="btns" style="margin-top:0">' + Bf.quick.map(q=>`<a class="btn" href="${esc(q.u)}" target="_blank" rel="noopener" style="text-decoration:none">${esc(q.t)}</a>`).join('') + '</div>'; p1.append(c); }
+  if(B.day?.cells){ const kv=document.createElement('div'); kv.className='kv'; B.day.cells.forEach(c=>kv.append(h(`<div class="cell"><div class="mono">${esc(c.k)}</div><div class="v sm">${A(c.link,c.v)}</div></div>`))); p1.append(h(`<div class="sec"><div class="mono">Know</div></div>`)); p1.append(kv); }
+  // page 2
+  const p2 = h(`<div id="p2"></div>`).firstElementChild; V.append(p2);
+  p2.append(h(`<div class="hero rose" style="min-height:220px;margin-top:30px"><div class="mono">Page 2 · Prep</div><p class="lead">${esc(C.intro?.one_line||'')}</p><div class="foot"><div class="mono">Say it slow. Stop after forty seconds.</div></div></div>`));
+  if(C.intro?.forty) p2.append(h(`<div class="card"><div class="mono">40 seconds</div><p class="speech" style="font-size:17px">${esc(C.intro.forty)}</p></div>`));
+  if(C.three){ p2.append(h(`<div class="sec"><div class="mono">Lisa's three, the hooks</div></div>`)); const c=document.createElement('div'); c.className='card tl'; C.three.forEach((t,i)=>c.append(h(`<div class="it"><div class="t">0${i+1}</div><div><div class="h">${esc(t.remember||'')}</div><div class="s">${esc(t.a)}</div></div></div>`))); p2.append(c); }
+  H.forEach(x => { const c=document.createElement('div'); c.className='card'; c.innerHTML = `<div class="mono">Say to ${esc(x.name)}</div>` + (x.say||[]).map(s=>`<p style="margin:10px 0 0;font-size:14px;color:var(--peach)">${esc(s)}</p>`).join('') + `<div class="btns">${(x.links||[]).slice(0,3).map(l=>`<a class="btn" href="${esc(l.u)}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px;padding:7px 12px">${esc(l.t)}</a>`).join('')}</div>`; p2.append(c); });
+  if(C.facts){ const kv=document.createElement('div'); kv.className='kv'; C.facts.slice(0,6).forEach(f=>kv.append(h(`<div class="cell"><div class="mono">${esc(f.k)}</div><div class="v sm">${esc(f.v)}</div></div>`))); p2.append(h(`<div class="sec"><div class="mono">Six facts</div></div>`)); p2.append(kv); }
+  if(C.rules){ const c=document.createElement('div'); c.className='card tl'; C.rules.forEach((r,i)=>c.append(h(`<div class="it"><div class="t">0${i+1}</div><div class="h">${esc(r)}</div></div>`))); p2.append(h(`<div class="sec"><div class="mono">Rules</div></div>`)); p2.append(c); }
+  if(C.ask){ const c=document.createElement('div'); c.className='card tl'; C.ask.forEach((r,i)=>c.append(h(`<div class="it"><div class="t">0${i+1}</div><div class="h">${esc(r)}</div></div>`))); p2.append(h(`<div class="sec"><div class="mono">Ask them</div></div>`)); p2.append(c); }
+  // page 3: A list
+  const p3 = h(`<div id="p3"></div>`).firstElementChild; V.append(p3);
+  p3.append(h(`<div class="sec"><div class="mono">Page 3 · The ${P.length} to find</div><div class="mono">LinkedIn</div></div>`));
+  const c=document.createElement('div'); c.className='card';
+  P.forEach(p=>c.append(h(`<div class="person"><img class="av" src="${esc(p.avatar||'')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div><div class="nm">${p.linkedin?`<a href="${esc(p.linkedin)}" target="_blank" rel="noopener" style="text-decoration:none">${esc(p.name)}</a>`:esc(p.name)}</div><div class="ti">${esc([p.title,p.company].filter(Boolean).join(' · '))}</div>${p.why?`<div class="wy">${esc(p.why)}</div>`:''}${p.opener?`<div class="op">${esc(p.opener)}</div>`:''}</div></div>`)));
+  p3.append(c);
+}
 
 function day(){
   const D = B.day || {};
@@ -306,9 +337,9 @@ function day(){
   }
   if(D.options){
     V.append(h(`<div class="sec"><div class="mono">Ways to get there</div></div>`));
-    D.options.forEach(o => V.append(h(`<div class="card"><div class="row"><h3>${esc(o.name)}</h3><div class="mono">${esc(o.meta||'')}</div></div><div style="color:var(--mute);font-size:14px">${o.text}</div>${o.link?`<a class="more" href="${esc(o.link)}" target="_blank" rel="noopener">Open in Maps</a>`:''}</div>`)));
+    D.options.forEach(o => V.append(h(`<div class="card"><div class="row"><h3>${esc(o.name)}</h3><div class="mono">${esc(o.meta||'')}</div></div><div style="color:var(--mute);font-size:14px">${o.text}</div>${o.link?`<a class="more" href="${esc(o.link)}" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none">${esc(o.linklabel||'Open')}</a>`:''}</div>`)));
   }
-  if(D.cells){ const kv = document.createElement('div'); kv.className='kv'; D.cells.forEach(c => kv.append(h(`<div class="cell"><div class="mono">${esc(c.k)}</div><div class="v ${c.sm?'sm':''}">${esc(c.v)}</div></div>`))); V.append(h(`<div class="sec"><div class="mono">Know</div></div>`)); V.append(kv); }
+  if(D.cells){ const kv = document.createElement('div'); kv.className='kv'; D.cells.forEach(c => kv.append(h(`<div class="cell"><div class="mono">${esc(c.k)}</div><div class="v ${c.sm?'sm':''}">${A(c.link,c.v)}</div></div>`))); V.append(h(`<div class="sec"><div class="mono">Know</div></div>`)); V.append(kv); }
   if(D.evening){
     V.append(h(`<div class="sec"><div class="mono">Rest of the day</div></div>`));
     const tl = document.createElement('div'); tl.className='card tl';
@@ -322,7 +353,7 @@ function room(){
   const H = B.hosts || [];
   V.append(h(`<div class="hero sky"><div class="mono">The room</div><div class="big">${(B.people||[]).length}<small>going</small></div><div class="sub">${esc(B.room_line || 'A working lunch. Everyone says what they build. Investors, builders, researchers.')}</div><div class="foot"><div class="mono">${esc(B.room_foot||'Hosts below, then who to find')}</div></div></div>`));
   H.forEach(x => {
-    const c = h(`<div class="card"><div class="mono">Host</div><h3 style="margin-top:6px;font-size:22px;font-weight:300">${esc(x.name)}</h3><div style="color:var(--mute);font-size:13px">${esc(x.role)}</div><div style="margin-top:10px;font-size:14px;color:rgba(255,255,255,.85)">${(x.lines||[]).map(l=>'<p style="margin:6px 0">'+esc(l)+'</p>').join('')}</div>${(x.say||[]).map(s=>`<div class="person" style="display:block;border:0;padding:0"><div class="op">${esc(s)}</div></div>`).join('')}${x.link?`<a class="lk more" style="display:inline-block" href="${esc(x.link)}" target="_blank" rel="noopener">Profile</a>`:''}</div>`);
+    const c = h(`<div class="card"><div class="mono">Host</div><h3 style="margin-top:6px;font-size:22px;font-weight:300">${esc(x.name)}</h3><div style="color:var(--mute);font-size:13px">${esc(x.role)}</div><div style="margin-top:10px;font-size:14px;color:rgba(255,255,255,.85)">${(x.lines||[]).map(l=>'<p style="margin:6px 0">'+esc(l)+'</p>').join('')}</div>${(x.say||[]).map(s=>`<div class="person" style="display:block;border:0;padding:0"><div class="op">${esc(s)}</div></div>`).join('')}<div class="btns">${(x.links||(x.link?[{t:'Profile',u:x.link}]:[])).map(l=>`<a class="btn" href="${esc(l.u)}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px;padding:7px 12px">${esc(l.t)}</a>`).join('')}</div></div>`);
     V.append(c);
   });
   const P = (B.people||[]).slice().sort((a,b)=> (a.tier||'C').localeCompare(b.tier||'C') || a.name.localeCompare(b.name));
