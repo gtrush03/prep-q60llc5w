@@ -29,6 +29,7 @@ const T = {
   set_mode: { d:'Switch the coaching mode: table (Lisa opens, go round the table), grill (skeptical investor), drill (rapid questions with scores), free.', p:{type:'object',properties:{mode:{type:'string',enum:['table','grill','drill','free']}},required:['mode']}, f({mode}){ setMode(mode, true); return { mode }; } },
   get_state: { d:'Everything about the current session state: mode, how long the session has run, which app tab George has open, notes and scores saved so far, drill questions already asked, whether a memo is being recorded, tools used. Call it when you need to know where you are or what has been covered.', p:{type:'object',properties:{}}, f(){ const notes=getNotes(); return { mode:VS.mode, session_seconds: VS.startedAt? Math.round((Date.now()-VS.startedAt)/1000):0, app_tab: (typeof tab!=='undefined'? tab : null), notes_count: notes.length, last_notes: notes.slice(-5).map(n=>n.t), scores: notes.filter(n=>/^Score \d\/5/.test(n.t)).map(n=>n.t), drill_asked: VS.asked.slice(-10), memo_recording: VS.memoOn, memo_chars: VS.memo.length, tools_used: VS.toolsUsed, time: T.get_time.f() }; } },
   end_memo: { d:'Finish the voice memo George is recording: saves the transcript as a note and returns it so you can read back a two sentence summary.', p:{type:'object',properties:{}}, f(){ return endMemo(); } },
+  show_card: { d:'Put a card on George\'s screen while you talk: a title and up to 6 short lines. Use it to show a name to remember, a number, a question, the three answers, a checklist, or anything visual that helps while speaking. Person, time, schedule, drill and answer lookups already show cards automatically, so use this for everything else.', p:{type:'object',properties:{title:{type:'string'},lines:{type:'array',items:{type:'string'}},kind:{type:'string',enum:['generic','person','time','sched','drill','answer','note','pitch']}},required:['title','lines']}, f({title,lines,kind}){ return { shown:true, title, lines:(lines||[]).slice(0,6), kind:kind||'generic' }; } },
   model_answer: { d:'The sharp prepared TRU Synth answer to a question, written as George would say it. Call this the moment George says "I don\'t know", "idk", "tell me", "what would you say", "skip", "help", or gives up on a question. Finds the closest drill question, objection, or one of Lisa\'s three, and returns the model answer plus the trap to avoid. If nothing matches closely, it returns the facts sheet so you can compose a tight answer yourself.', p:{type:'object',properties:{question:{type:'string',description:'the question George was asked, in your words'}},required:['question']}, f({question}){ const C=B.content||{}; const q=String(question||'').toLowerCase().split(/\W+/).filter(w=>w.length>3); const pool=[]; (C.drill||[]).forEach(d=>pool.push({kind:d.cat,q:d.q,a:d.a,trap:d.trap})); (C.objections||[]).forEach(o=>pool.push({kind:'objection',q:o.o,a:o.r})); (C.three||[]).forEach(t=>pool.push({kind:'lisa',q:t.q,a:t.a,trap:t.remember?'remember: '+t.remember:''})); const scored=pool.map(x=>[q.reduce((n,w)=>n+((x.q+' '+x.a).toLowerCase().includes(w)?1:0),0),x]).sort((a,b)=>b[0]-a[0]); const best=scored[0]; if(best && best[0]>=2) return { match:best[1].q, answer:best[1].a, trap:best[1].trap||'', say_it_as:'first person, George speaking, two to four sentences, calm, concrete, then ask him to repeat it back', also:scored.slice(1,3).filter(x=>x[0]>=2).map(x=>({q:x[1].q,a:x[1].a})) }; return { match:null, facts:(C.facts||[]).map(f=>f.k+': '+f.v), one_line:C.intro?.one_line, forty:C.intro?.forty, rules:C.rules, hint:'compose a sharp two to four sentence answer from these facts, first person as George, no hedging' }; } },
   score_answer: { d:'Record a score George got on a practice answer so progress is tracked. 1 to 5.', p:{type:'object',properties:{question:{type:'string'},score:{type:'integer'},fix:{type:'string'}},required:['question','score']}, f({question,score,fix}){ addNote(`Score ${score}/5 · ${question}${fix?' · fix: '+fix:''}`); return { recorded:true }; } }
 };
@@ -43,14 +44,14 @@ function liveInstructions(){
 ## Live rules
 Speak warmly, quickly, naturally, like a sharp friend, not a narrator. Short turns. Stop the moment George speaks. Light backchannels are fine.
 Whenever George asks about the time, the schedule, the route, a person, the summit programme, the pitch text, facts, or research, delegate to the backend: it has tools that look these up. Never guess a name, a time, or a number. While the backend works, keep it brief: say you are checking, then read out the result in one or two sentences.
-Modes: table, grill, drill, flow, memo, free. Switch when George asks. In memo mode you are silent until the memo ends.
+Modes: table, grill, drill, flow, memo, qa, free. Switch when George asks. In memo mode you are silent until the memo ends.
 The bail-out rule, in every mode: if George says "I don't know", "idk", "tell me", "what would you say", "skip", "help me", or clearly stalls, do not push back and do not lecture. Delegate immediately to get the prepared TRU Synth answer, then deliver it as George would say it, first person, two to four sentences, sharp and concrete, and finish with "now you say it". When he repeats it, give one line of feedback and move on.`;
 }
 function backendInstructions(){
   return (B.backend_instructions||'') + `
 
 ## Tools
-You have tools that read the live prep package on George's phone: get_time (always call it for anything time related, it also tells you what is happening now and next), get_schedule, find_people, get_person, get_hosts, get_summit, get_pitch, get_drill, search_research, save_note, list_notes, set_mode, score_answer, model_answer, get_state, end_memo. Call get_state when unsure what has been covered. Call them instead of guessing. When George bails on a question with anything like I don't know, tell me, what would you say, skip, or help, call model_answer with the question and return the answer written in first person as George would say it, two to four sentences, no hedging, ending with a cue for him to repeat it. Chain them when useful (find_people then get_person). When George says he met someone or wants to remember something, call save_note. When you score a practice answer, call score_answer. Return results as short spoken sentences, at most three, with the exact names and numbers from the tools. Never invent a person who is not in the list.`;
+You have tools that read the live prep package on George's phone: get_time (always call it for anything time related, it also tells you what is happening now and next), get_schedule, find_people, get_person, get_hosts, get_summit, get_pitch, get_drill, search_research, save_note, list_notes, set_mode, score_answer, model_answer, get_state, end_memo, show_card. Whenever you mention a person, a time, a question or an answer, the matching tool call puts a card on his screen automatically; call show_card for anything else worth seeing (a checklist, a number, a name to remember, the plan for the next five minutes). Prefer showing over reading long lists aloud: show the card, then say the one thing that matters. Call get_state when unsure what has been covered. Call them instead of guessing. When George bails on a question with anything like I don't know, tell me, what would you say, skip, or help, call model_answer with the question and return the answer written in first person as George would say it, two to four sentences, no hedging, ending with a cue for him to repeat it. Chain them when useful (find_people then get_person). When George says he met someone or wants to remember something, call save_note. When you score a practice answer, call score_answer. Return results as short spoken sentences, at most three, with the exact names and numbers from the tools. Never invent a person who is not in the list.`;
 }
 function modeText(m){ const M=(B.content?.voice_modes)||{}; return M[m] || 'Mode '+m+'.'; }
 
@@ -60,6 +61,48 @@ function startMemo(){ VS.memo=''; VS.memoOn=true; $('#vdone').hidden=false; setS
 function endMemo(){ VS.memoOn=false; $('#vdone').hidden=true; const text=VS.memo.trim(); if(text){ addNote('Memo · '+text.slice(0,600)); } setStatus(text? 'Memo saved.' : 'Empty memo.'); const t=text; VS.memo=''; return { saved: !!t, memo: t || '(nothing captured)' }; }
 $('#vdone').onclick = () => { const r=endMemo(); if(VS.ready) sendEv({type:'session.instructions.append', event_id:'memo_off', delegation_id:null, content:'Memo ended. Memo text: "'+String(r.memo).slice(0,900)+'". Read back a two sentence summary now, then return to mode '+(VS.mode==='memo'?'free':VS.mode)+'.'}); if(VS.mode==='memo') setMode('free', true); };
 $('#vtr').addEventListener('click', () => $('#vtr').classList.toggle('full'));
+
+
+/* ---------- cards ---------- */
+const CARD_MAX=12;
+function card(kind, title, bodyHtml, opts={}){
+  const wrap=$('#vcards'); if(!wrap) return;
+  const el=document.createElement('div'); el.className='vcard '+kind; el.innerHTML=`<div class="mono">${esc(title)}</div>${bodyHtml}`;
+  if(opts.onclick) el.addEventListener('click', opts.onclick);
+  wrap.append(el); while(wrap.children.length>CARD_MAX) wrap.firstElementChild.remove();
+  requestAnimationFrame(()=>{ el.classList.add('in'); wrap.scrollTo({left: el.offsetLeft-16, behavior:'smooth'}); });
+  $('#vcards').hidden=false;
+}
+function personCard(p){
+  card('person', (p.tier? 'Tier '+p.tier+' · ' : '')+(p.host?'Host':(p.speaker?'Speaker':'Guest')), `
+    <div class="pc"><img src="${esc(p.avatar||'')}" onerror="this.style.visibility='hidden'" alt=""><div><div class="pn">${esc(p.name)}</div><div class="pt">${esc([p.title,p.company,p.role].filter(Boolean).join(' · '))}</div></div></div>
+    ${p.why?`<div class="pw">${esc(p.why)}</div>`:''}
+    ${p.opener?`<div class="op">${esc(p.opener)}</div>`:''}
+    ${(p.say||[]).slice(0,2).map(x=>`<div class="op">${esc(x)}</div>`).join('')}
+    ${p.linkedin?`<a class="lk" href="${esc(p.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>`:''}`);
+}
+function cardFor(name, args, out){
+  try{
+    if(!out || out.error) return;
+    switch(name){
+      case 'get_time': card('time','Now · '+out.time_pt+' PT', `<div class="big">${out.minutes_until_lunch>0? Math.floor(out.minutes_until_lunch/60)+'h '+(out.minutes_until_lunch%60)+'m' : 'lunch'}</div><div class="sub">${out.minutes_until_lunch>0?'until lunch':'now'}</div>${out.next?`<div class="row2"><span class="t">${esc(out.next.t)}</span><span>${esc(out.next.h)}</span></div>`:''}${out.now?`<div class="row2 dim"><span class="t">${esc(out.now.t)}</span><span>${esc(out.now.h)}</span></div>`:''}`); break;
+      case 'find_people': (out.people||[]).slice(0,4).forEach(p=>{ const full=(B.people||[]).find(x=>x.name===p.name)||p; personCard(full); }); break;
+      case 'get_person': if(out.host) personCard(out); else { const full=(B.people||[]).find(x=>x.name===out.name)||out; personCard(full); } break;
+      case 'get_hosts': (out||[]).forEach(h=>personCard({...h, host:true})); break;
+      case 'get_schedule': { const rows=(out.timeline||[]).slice(0,14); if(rows.length) card('sched','Timeline', rows.map(r=>`<div class="row2"><span class="t">${esc(r.t)}</span><span>${esc(r.h)}</span></div>`).join('')); (out.evening||[]).length && card('sched','Rest of the day', out.evening.map(r=>`<div class="row2"><span class="t">${esc(r.t)}</span><span>${esc(r.h)}</span></div>`).join('')); (out.options||[]).length && card('sched','Ways there', out.options.map(o=>`<div class="row2"><span class="t">${esc(o.meta||'')}</span><span>${esc(o.name)}</span></div>`).join('')); break; }
+      case 'get_drill': (out.questions||[]).forEach(q=>{ const el={}; card('drill', q.cat, `<div class="q">${esc(q.q)}</div><div class="a" hidden>${esc(q.a)}${q.trap?`<div class="trap">Do not · ${esc(q.trap)}</div>`:''}</div><div class="tap">tap to reveal</div>`, {onclick: e=>{ const c=e.currentTarget; const a=c.querySelector('.a'); a.hidden=!a.hidden; c.querySelector('.tap').textContent=a.hidden?'tap to reveal':'tap to hide'; }}); }); break;
+      case 'model_answer': if(out.match) card('answer','Say this', `<div class="q dim">${esc(out.match)}</div><div class="ans">${esc(out.answer)}</div>${out.trap?`<div class="trap">Do not · ${esc(out.trap)}</div>`:''}`); else card('answer','Build it from these', (out.facts||[]).slice(0,6).map(f=>`<div class="row2"><span>${esc(f)}</span></div>`).join('')); break;
+      case 'get_summit': (out.matches||[]).slice(0,3).forEach(m=>{ const parts=m.split(' | ').filter(Boolean); card('summit','Summit', `<div class="q">${esc(parts[0]||'')}</div>${parts.slice(1,7).map(x=>`<div class="row2"><span>${esc(x)}</span></div>`).join('')}`); }); break;
+      case 'get_pitch': { const sec=Object.keys(out)[0]; const v=out[sec]; if(sec==='intro' && v) card('pitch','40 seconds', `<div class="ans">${esc(v.forty||'')}</div>`); else if(sec==='three' && v) v.forEach(t=>card('pitch', t.remember||'Lisa', `<div class="q dim">${esc(t.q)}</div><div class="ans">${esc(t.a)}</div>`)); else if(sec==='facts' && v) card('pitch','Facts', v.map(f=>`<div class="row2"><span class="t">${esc(f.k)}</span><span>${esc(f.v)}</span></div>`).join('')); else if(sec==='rules' && v) card('pitch','Rules', v.map((r,i)=>`<div class="row2"><span class="t">0${i+1}</span><span>${esc(r)}</span></div>`).join('')); else if(sec==='ask' && v) card('pitch','Ask them', v.map((r,i)=>`<div class="row2"><span class="t">0${i+1}</span><span>${esc(r)}</span></div>`).join('')); else if(sec==='story' && v) card('pitch','Story', v.map(b=>`<div class="row2"><span class="t">0${b.n}</span><span>${esc(b.title)} · ${esc(b.line)}</span></div>`).join('')); else if(sec==='followup' && v) card('pitch','Follow up', `<div class="ans" style="white-space:pre-wrap;font-size:13px">${esc(v.email||'')}</div>`); break; }
+      case 'save_note': case 'score_answer': { const n=getNotes().slice(-1)[0]; if(n) card('note','Saved', `<div class="ans">${esc(n.t)}</div>`); break; }
+      case 'end_memo': card('note','Memo saved', `<div class="ans">${esc(out.memo||'')}</div>`); break;
+      case 'get_state': card('state','State', `<div class="row2"><span class="t">mode</span><span>${esc(out.mode)}</span></div><div class="row2"><span class="t">session</span><span>${Math.round(out.session_seconds/60)} min</span></div><div class="row2"><span class="t">notes</span><span>${out.notes_count}</span></div><div class="row2"><span class="t">asked</span><span>${(out.drill_asked||[]).length}</span></div>`); break;
+      case 'search_research': (out.paragraphs||[]).slice(0,2).forEach(pg=>card('research','Research', `<div class="ans" style="font-size:13px">${esc(pg.slice(0,420))}</div>`)); break;
+      case 'show_card': card(out.kind||'generic', out.title||'Ada', (out.lines||[]).map(l=>`<div class="row2"><span>${esc(l)}</span></div>`).join('')); break;
+      case 'set_mode': card('state','Mode', `<div class="big" style="font-size:28px">${esc(out.mode)}</div>`); break;
+    }
+  }catch(e){ console.warn('card',e); }
+}
 
 /* ---------- ui ---------- */
 const setStatus = s => { const el=$('#vst'); if(el) el.textContent=s; };
@@ -101,7 +144,7 @@ function onEvent(ev){
       const e=ev.event||{};
       if(e.type==='response.output_item.done' && e.item?.type==='function_call'){
         const {name, arguments:args, call_id} = e.item; toolLine('→ '+name+(args && args!=='{}'? ' '+args.slice(0,80):''));
-        const out = runTool(name, args); VS.toolsUsed[name]=(VS.toolsUsed[name]||0)+1; if(name==='get_drill' && out.questions) out.questions.forEach(q=>VS.asked.push(q.q));
+        const out = runTool(name, args); VS.toolsUsed[name]=(VS.toolsUsed[name]||0)+1; cardFor(name, args, out); if(name==='get_drill' && out.questions) out.questions.forEach(q=>VS.asked.push(q.q));
         sendEv({type:'response.item.create', event_id:'tool_'+Date.now(), item:{type:'function_call_output', call_id, output: JSON.stringify(out).slice(0, 12000)}});
         sendEv({type:'response.create', event_id:'cont_'+Date.now()});
       } else if(e.type==='response.completed' || e.type==='response.failed'){ if(VS.state==='thinking') setViz('listening'); }
@@ -114,7 +157,7 @@ function onEvent(ev){
 
 $('#vstart').onclick = async () => {
   const key=getKey(); if(!key){ $('#vsettings').classList.add('on'); setStatus('Need an OpenAI API key first.'); return; }
-  $('#vstart').hidden=true; setStatus('Connecting…'); $('#vtr').innerHTML=''; setViz('connecting');
+  $('#vstart').hidden=true; setStatus('Connecting…'); $('#vtr').innerHTML=''; const vc=$('#vcards'); if(vc){ vc.innerHTML=''; vc.hidden=true; } setViz('connecting');
   try{
     if(window.AdaViz && !VS.vizMounted){ try{ AdaViz.mount($('#orbwrap')); VS.vizMounted=true; }catch{} }
     if(!VS.audio){ VS.audio=new Audio(); VS.audio.autoplay=true; VS.audio.playsInline=true; VS.audio.setAttribute('playsinline',''); }
@@ -138,5 +181,5 @@ $('#vstart').onclick = async () => {
     setStatus('Session up · waiting for start…');
   }catch(e){ setStatus(e.message||String(e)); vcleanup(); }
 };
-window.AdaTools = { run: runTool, defs: toolDefs, vs: VS, send: sendEv };
+window.AdaTools = { run: runTool, defs: toolDefs, vs: VS, send: sendEv, onEvent };
 })();
